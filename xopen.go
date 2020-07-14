@@ -109,7 +109,7 @@ func (r *Reader) Close() error {
 // Writer is returned by Wopen
 type Writer struct {
 	*bufio.Writer
-	wtr *os.File
+	wtr io.WriteCloser
 	gz  *gzip.Writer
 }
 
@@ -307,4 +307,18 @@ func WopenFile(f string, flag int, perm os.FileMode) (*Writer, error) {
 	}
 	gz := gzip.NewWriter(wtr)
 	return &Writer{bufio.NewWriterSize(gz, pageSize), wtr, gz}, nil
+}
+
+func WopenPipe(f string, c string) (*Writer, error) {
+	cmd := exec.Command("/bin/sh", "-c", c)
+	cmd.Env = append(
+		os.Environ(),
+		fmt.Sprintf("FILE=%s", f),
+	)
+
+	stdin, _ := cmd.StdinPipe()
+	w := bufio.NewWriter(stdin)
+
+	cmd.Start()
+	return &Writer{w, stdin, nil}, nil
 }
